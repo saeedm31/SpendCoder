@@ -8,6 +8,9 @@ to a person.**
 [![Hugging Face](https://img.shields.io/badge/🤗-Transformers-yellow)](https://huggingface.co/docs/transformers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
+🌐 **[Live demo](https://spendcoder.onrender.com)**: paste purchase lines and see the model work (free server: after a quiet
+period the first visit takes about a minute to wake up) · [API docs](https://spendcoder.onrender.com/docs)
+
 📚 [How fine-tuning works](docs/how-fine-tuning-works.md) · [Architecture](docs/architecture.md) · [AWS option](docs/aws.md) · [Data card](docs/data_card.md) · [Notebook](notebooks/SpendCoder_finetuning.ipynb)
 
 ---
@@ -114,21 +117,30 @@ python scripts/aws_train.py --promote --restart    # train on a GPU, promote the
 **Control panel:** `streamlit run streamlit_app.py` (set `ADMIN_PASSWORD` and, optionally, the AWS settings in
 Streamlit secrets).
 
-**Serve the model (CPU, no PyTorch):**
+**Serve the model with its web page (CPU, no PyTorch):**
 
 ```bash
 pip install -r requirements.txt
-MODEL_REPO=<hf-user>/spendcoder-distilroberta uvicorn serve.app:app --port 8000
+MODEL_REPO=Saeedhoj/spendcoder-distilroberta uvicorn serve.app:app --port 8000   # open http://localhost:8000
 curl -X POST localhost:8000/classify -H "Content-Type: application/json" \
      -d '{"lines": ["Annual maintenance of production line pumps", "Dell Latitude laptops"]}'
 
-docker build -t spendcoder . && docker run -e MODEL_REPO=<hf-user>/spendcoder-distilroberta -p 8000:8000 spendcoder
+docker build -t spendcoder . && docker run -e MODEL_REPO=Saeedhoj/spendcoder-distilroberta -p 8000:8000 spendcoder
 ```
 
 | Endpoint | Returns |
 |---|---|
+| `GET /` | Web page: paste lines, see category, confidence, review flag and top 3; move the review threshold; download CSV |
 | `POST /classify` | For each line: category, confidence, `needs_review`, top 3 suggestions; plus how many need review |
-| `GET /health` | Model status and the review threshold |
+| `GET /health` | Model status, categories, review threshold and test scores |
+| `GET /docs` | Interactive API documentation |
+
+`MODEL_SUBFOLDER=onnx-int8` loads the int8 version of the model: 4x smaller, for servers with little memory.
+
+**Deploy for free on Render** (this is how the [live demo](https://spendcoder.onrender.com) runs): the repo has a
+`render.yaml` blueprint (Docker, free plan, int8 model). On
+[render.com](https://render.com): *New → Blueprint → this repo*. The free plan sleeps after about 15 minutes
+without traffic and takes about a minute to wake up.
 
 ## 📁 Project structure
 
@@ -145,10 +157,11 @@ docker build -t spendcoder . && docker run -e MODEL_REPO=<hf-user>/spendcoder-di
 │   ├── aws.py           # SageMaker training, S3 model store, promote, ECS restart
 │   └── modelcard.py     # model card for the Hub
 ├── scripts/             # prepare_data.py, train.py, aws_train.py
-├── serve/app.py         # FastAPI service (model from a folder, the Hub or S3)
+├── serve/               # FastAPI service + web page (model from a folder, the Hub or S3)
 ├── streamlit_app.py     # control panel
 ├── infra/terraform/     # AWS: S3, SageMaker role, ECR, ECS Fargate, load balancer
-├── Dockerfile
+├── Dockerfile           # API + web page image (also used by render.yaml and deploy/huggingface-space)
+├── render.yaml          # free deploy on Render
 ├── docs/                # how fine-tuning works, architecture, AWS option, data card
 └── tests/               # no network, no GPU
 ```
