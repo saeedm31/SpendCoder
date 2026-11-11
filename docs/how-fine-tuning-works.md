@@ -108,7 +108,7 @@ person's decision -> stored as a new label -> next fine-tuning round
 
 ## 7. Check your understanding
 
-You should be able to explain, in your own words:
+After working through the notebook, you will understand:
 - the difference between pretraining and fine-tuning, and why fine-tuning needs little data
 - what the tokenizer does, and why it must match the model
 - learning rate, epochs, batch size, warmup, early stopping, fp16, class-weighted loss
