@@ -10,7 +10,8 @@ to a person.**
 
 🌐 **[Live demo](https://spendcoder.onrender.com)**: paste purchase lines and see the model work (free server: after a quiet
 period the first visit takes about a minute to wake up) · [API docs](https://spendcoder.onrender.com/docs) ·
-[How it works, in plain English](https://spendcoder.onrender.com/how-it-works)
+[How it works, in plain English](https://spendcoder.onrender.com/how-it-works) ·
+[Product overview](https://spendcoder.onrender.com/product)
 
 📚 [How fine-tuning works](docs/how-fine-tuning-works.md) · [Architecture](docs/architecture.md) · [AWS option](docs/aws.md) · [Data card](docs/data_card.md) · [Notebook](notebooks/SpendCoder_finetuning.ipynb)
 
@@ -133,6 +134,7 @@ docker build -t spendcoder . && docker run -e MODEL_REPO=Saeedhoj/spendcoder-dis
 |---|---|
 | `GET /` | Web page: paste lines, see category, confidence, review flag and top 3; move the review threshold; download CSV |
 | `POST /classify` | For each line: category, confidence, `needs_review`, top 3 suggestions; plus how many need review |
+| `GET /product` | Product overview for business readers: value, steps, control, expected results, pilot |
 | `GET /how-it-works` | The data path and the model explained in plain English, for non-technical readers |
 | `GET /health` | Model status, categories, review threshold and test scores |
 | `GET /docs` | Interactive API documentation |
