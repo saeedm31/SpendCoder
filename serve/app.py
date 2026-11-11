@@ -9,6 +9,7 @@
 
 GET  /          web page: paste lines, see category, confidence, review flag and top 3
 GET  /how-it-works  the data path and the model explained in plain English
+GET  /product   product overview for business readers
 POST /classify  {"lines": ["ANNUAL MAINTENANCE OF HV SWITCHGEAR", "DELL LATITUDE LAPTOPS"]}
 GET  /health    model status, categories, review threshold, test scores
 GET  /docs      interactive API documentation (OpenAPI)
@@ -30,11 +31,18 @@ MAX_LINES = 500
 MAX_CHARS = 500
 PAGE = Path(__file__).parent / "static" / "index.html"
 GUIDE = Path(__file__).parent / "static" / "how-it-works.html"
+PRODUCT = Path(__file__).parent / "static" / "product.html"
 _warmup = {"running": False, "error": None}
 
 
 @lru_cache(maxsize=1)
 def predictor():
+    p = _load_predictor()
+    p.batch_size = int(os.environ.get("PREDICT_BATCH_SIZE", "32"))    # set 1 for the int8 model
+    return p
+
+
+def _load_predictor():
     if os.environ.get("MODEL_S3_BUCKET"):      # AWS: the model promoted to s3://<bucket>/models/active/onnx/
         import boto3
 
@@ -93,6 +101,11 @@ def page():
 @app.get("/how-it-works", include_in_schema=False)
 def guide():
     return FileResponse(GUIDE, media_type="text/html")
+
+
+@app.get("/product", include_in_schema=False)
+def product():
+    return FileResponse(PRODUCT, media_type="text/html")
 
 
 @app.get("/health")

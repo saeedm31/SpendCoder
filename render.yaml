@@ -13,3 +13,5 @@ services:
         value: Saeedhoj/spendcoder-distilroberta
       - key: MODEL_SUBFOLDER
         value: onnx-int8       # 4x smaller int8 model: fits the free plan's 512 MB of memory
+      - key: PREDICT_BATCH_SIZE
+        value: "1"             # int8 model: one line at a time, so a line's answer never depends on the others

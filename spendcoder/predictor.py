@@ -35,8 +35,10 @@ def decide(text, probs, labels, threshold, top_k=3):
 
 
 class Predictor:
-    def __init__(self, tokenizer, session, labels, threshold=0.9):
+    def __init__(self, tokenizer, session, labels, threshold=0.9, batch_size=32):
         self.tokenizer, self.session, self.labels, self.threshold = tokenizer, session, list(labels), threshold
+        self.batch_size = batch_size     # 1 for the int8 model: its number scale is set per batch, so a line's
+                                         # answer would otherwise depend on the other lines in the same request
         self.input_names = [i.name for i in session.get_inputs()]
 
     @classmethod
@@ -65,11 +67,12 @@ class Predictor:
         path = snapshot_download(repo_id, revision=revision, token=token, allow_patterns=[f"{subfolder}/*"])
         return cls.load(os.path.join(path, subfolder), threshold=threshold)
 
-    def probs(self, texts, batch_size=32):
+    def probs(self, texts, batch_size=None):
         """Category probabilities. Lines go through the model in small batches, so memory stays low on a
         small server even for a 500-line request."""
         if not texts:
             return np.zeros((0, len(self.labels)))
+        batch_size = batch_size or self.batch_size
         out = []
         for i in range(0, len(texts), batch_size):
             enc = self.tokenizer.encode_batch([clean_text(t) or " " for t in texts[i:i + batch_size]])
