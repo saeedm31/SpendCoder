@@ -37,13 +37,14 @@ flowchart LR
   UI[Control panel<br/>Streamlit] -.-> B & C & F & H
 ```
 
-1. **Real data:** about 60,000 US Department of Energy contract descriptions with their official Product and
-   Service Codes ([USAspending.gov](https://www.usaspending.gov), public domain), grouped into 14 categories.
+1. **Real data:** about 20,000 labelled US Department of Energy contract descriptions with their official Product
+   and Service Codes ([USAspending.gov](https://www.usaspending.gov), public domain), grouped into 14 categories.
 2. **Time split, like production:** train on contracts before October 2023, validate on the next year, test on the
    newest (from October 2024). Test lines whose exact text is in training are removed.
 3. **Baseline first:** TF-IDF + logistic regression. The transformer has to beat it.
 4. **Fine-tuning:** pretrained DistilRoBERTa plus a new classification head, trained with the Hugging Face
-   `Trainer` (learning rate 5e-5, up to 4 epochs, warmup, fp16, best epoch by validation macro F1, early stopping).
+   `Trainer` (learning rate 5e-5, up to 8 epochs, warmup, fp16, class-weighted loss for rare categories, best epoch
+   by validation macro F1, early stopping).
 5. **Evaluation:** accuracy, macro F1, per-category scores and error analysis on the test year.
 6. **Business rule:** a confidence threshold chosen on validation; above it the line is coded automatically, below
    it a person decides.
@@ -60,12 +61,35 @@ use it instead of an LLM prompt or RAG, and how companies run it in production.
 
 ## 📈 Results
 
-Results are written to `reports/finetuned.json` and the model card when you run the notebook.
+Test year: 1,547 contracts from October 2024 that the models never saw (train 17,098, validation 2,065).
 
-| Model (test year) | Accuracy | Macro F1 |
-|---|---|---|
-| TF-IDF + logistic regression | to be filled by the notebook run | |
-| Fine-tuned DistilRoBERTa | to be filled by the notebook run | |
+| Model | Accuracy | Macro F1 | Weighted F1 |
+|---|---|---|---|
+| TF-IDF + logistic regression (baseline) | 0.673 | **0.616** | 0.675 |
+| Fine-tuned DistilRoBERTa, run 1 (4 epochs, plain loss) | 0.675 | 0.547 | 0.667 |
+| Fine-tuned DistilRoBERTa, run 2 (8 epochs, class-weighted loss) | 0.665 | 0.569 | 0.664 |
+| Average of baseline and run 2 | **0.681** | 0.593 | **0.679** |
+
+Run 2 is the published model ([Hugging Face Hub](https://huggingface.co/Saeedhoj/spendcoder-distilroberta)).
+Review rule: a threshold of 0.99, chosen on validation for 95% accurate automatic codings, codes 29% of test lines
+automatically at 91% accuracy; a threshold of 0.9 codes 62% at 80%.
+
+**What the numbers say:**
+- **The simple baseline is as good as the transformer here.** Purchase descriptions are short and full of keywords
+  ("LAPTOPS", "JANITORIAL SERVICES"), which is exactly where TF-IDF is strong. That is why you build a baseline first.
+- **The macro F1 gap comes mostly from tiny test categories** (Research & development: 3 lines, Facility
+  operations: 14). On the large categories the two are close, and the transformer is better on IT hardware &
+  software (F1 0.72 vs 0.67).
+- **Reading the training log helped:** in run 1, validation was still improving at the last epoch. Run 2 trains
+  longer, with longer inputs and a class-weighted loss: test macro F1 0.547 → 0.569 (validation 0.567 → 0.585).
+- **Averaging the two models gives the best accuracy (0.681):** they make different mistakes.
+- **The newest year is harder:** the threshold set for 95% on validation gives 91% on the test year. In production
+  the threshold has to be re-checked on fresh, reviewed lines.
+- **Decision for a company:** start with the baseline or the average of both; the transformer pays off with more
+  labelled data, longer or messier texts, or several languages. Next steps: more years and agencies, a larger model
+  (`roberta-base`, `deberta-v3-base`), cleaning debatable labels.
+
+A notebook run writes all scores (overall, per category, automation at several thresholds) to `reports/finetuned.json` and the model card.
 
 ## 🚀 Run it
 
