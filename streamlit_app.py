@@ -47,7 +47,7 @@ def setting(name, default=None):
 AWS = {k: setting(k) for k in ("AWS_REGION", "SPENDCODER_BUCKET", "SAGEMAKER_ROLE_ARN", "SAGEMAKER_IMAGE_URI",
                                "ECS_CLUSTER", "ECS_SERVICE", "API_URL")}
 AWS_READY = bool(AWS["SPENDCODER_BUCKET"] and AWS["SAGEMAKER_ROLE_ARN"])
-MODEL_REPO = setting("MODEL_REPO", "saeedm31/spendcoder-distilroberta")
+MODEL_REPO = setting("MODEL_REPO", "Saeedhoj/spendcoder-distilroberta")
 
 
 def is_admin():
@@ -191,7 +191,7 @@ elif page == "2 · Train":
         else:
             from spendcoder import aws
             c = st.columns(3)
-            epochs = c[0].number_input("Epochs", 1, 10, 4)
+            epochs = c[0].number_input("Epochs", 1, 12, 8)
             itype = c[1].selectbox("Instance", ["ml.g4dn.xlarge", "ml.g5.xlarge", "ml.p3.2xlarge"])
             spot = c[2].checkbox("Use spot capacity", True)
             if st.button("Launch training job", type="primary", disabled=not is_admin() or "df" not in st.session_state,
