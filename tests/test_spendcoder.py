@@ -165,6 +165,14 @@ class MetricsTests(unittest.TestCase):
         t = metrics.threshold_for_accuracy(y, p, target=0.95)
         self.assertTrue(0.55 <= t <= 0.65, t)
 
+    def test_class_weights_favour_rare_categories(self):
+        from spendcoder.finetune import class_weights     # module imports torch only inside functions
+        labels = [0] * 90 + [1] * 10
+        w = class_weights(labels, n_classes=3)
+        self.assertGreater(w[1], w[0])                     # rare category weighs more
+        self.assertAlmostEqual(float(w[np.array(labels)].mean()), 1.0)   # average weight per line is 1
+        self.assertAlmostEqual(w[1] / w[0], 3.0)           # square root of the 9x imbalance
+
 
 class FakeEncoding:
     def __init__(self, n):
