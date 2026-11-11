@@ -154,6 +154,15 @@
          background: var(--surface); border-radius: 8px; }
   .res.best { outline: 2px solid var(--accent); }
 
+  .run { margin-top: 36px; display: grid; gap: 12px; }
+  .run-grid { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); margin-top: 6px; }
+  @media (min-width: 700px) { .run-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (min-width: 980px) { .run-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  .run-item { display: grid; gap: 4px; align-content: start; padding: 16px; border-radius: 12px; text-decoration: none;
+              background: var(--surface); border: 1px solid var(--line); color: var(--ink); min-width: 0; }
+  .run-item:hover { border-color: var(--accent); }
+  .run-item b { font-family: var(--display); color: var(--accent); }
+  .run-item span { color: var(--muted); font-size: 14px; }
   footer { margin-top: 36px; display: grid; gap: 10px; color: var(--muted); font-size: 14px; }
   footer a { color: var(--accent); }
   @media (prefers-reduced-motion: no-preference) { .overview a { transition: background .15s, color .15s; } }
@@ -367,10 +376,10 @@
             <div class="snap-label">Our example line, real answer from the live demo</div>
             <span class="chip">Annual maintenance contract for production line pumps</span>
             <div class="bars">
-              <div class="bar-row"><span>Equipment maintenance &amp; repair</span><span class="num-r">67.6%</span>
-                <div class="bar"><i style="width:67.6%"></i></div></div>
-              <div class="bar-row"><span class="dim">The other 13 categories together</span><span class="num-r dim">32.4%</span>
-                <div class="bar rest"><i style="width:32.4%"></i></div></div>
+              <div class="bar-row"><span>Equipment maintenance &amp; repair</span><span class="num-r">69.7%</span>
+                <div class="bar"><i style="width:69.7%"></i></div></div>
+              <div class="bar-row"><span class="dim">The other 13 categories together</span><span class="num-r dim">30.3%</span>
+                <div class="bar rest"><i style="width:30.3%"></i></div></div>
             </div>
           </div>
         </div>
@@ -380,7 +389,7 @@
           <div class="lane auto"><b>Yes · coded automatically</b>
             <p>The line is posted with its category. With this bar, 29% of test lines went this way, and 91% of them were right.</p></div>
           <div class="lane review"><b>No · a person decides</b>
-            <p>The line goes to a review queue with the model's top 3 suggestions. Our pump line lands here: 67.6% is below the bar.
+            <p>The line goes to a review queue with the model's top 3 suggestions. Our pump line lands here: 69.7% is below the bar.
               Its top suggestion is the right category, so the check is quick.</p></div>
         </div>
         <div class="loop"><span class="sym" aria-hidden="true">↺</span>
@@ -391,8 +400,27 @@
 
   </main>
 
+  <section class="run" aria-labelledby="run-h">
+    <div class="eyebrow">For the people who run SpendCoder</div>
+    <h2 id="run-h">Run, retrain and steer it yourself</h2>
+    <div class="run-grid">
+      <a class="run-item" href="https://colab.research.google.com/github/saeedm31/SpendCoder/blob/main/notebooks/SpendCoder_finetuning.ipynb">
+        <b>Retrain the model</b><span>The step-by-step notebook: data, baseline, fine-tuning, tests, export. Runs free on Google Colab.</span></a>
+      <a class="run-item" href="https://github.com/saeedm31/SpendCoder/blob/main/docs/how-fine-tuning-works.md">
+        <b>Understand each training step</b><span>What fine-tuning is, every setting explained, and when to use it instead of a large AI model.</span></a>
+      <a class="run-item" href="https://github.com/saeedm31/SpendCoder/blob/main/streamlit_app.py">
+        <b>Control panel</b><span>Load data, launch training, set the confidence bar, work the review queue, promote a model to production.</span></a>
+      <a class="run-item" href="https://github.com/saeedm31/SpendCoder/blob/main/docs/aws.md">
+        <b>Run it in your cloud</b><span>Training on AWS SageMaker, model versions in S3, the service on ECS, all set up with Terraform.</span></a>
+      <a class="run-item" href="docs">
+        <b>API reference</b><span>Every endpoint with live examples, for connecting SpendCoder to an ERP or AP system.</span></a>
+      <a class="run-item" href="https://github.com/saeedm31/SpendCoder#-run-it">
+        <b>Settings and deployment</b><span>Run locally or in Docker, choose the full or the small model, deploy for free on Render.</span></a>
+    </div>
+  </section>
+
   <footer>
-    <p>Try it yourself: <a href="./">live demo</a> ·
+    <p>For business readers: <a href="product">product overview</a> · Try it yourself: <a href="./">live demo</a> ·
       <a href="https://github.com/saeedm31/SpendCoder">code and full results</a> ·
       <a href="https://huggingface.co/Saeedhoj/spendcoder-distilroberta">model card</a></p>
     <p>Built by Saeed Hojjatpanah. Demo on public data; check it on your own labelled lines before real use.</p>
