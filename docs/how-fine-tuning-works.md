@@ -106,7 +106,7 @@ person's decision -> stored as a new label -> next fine-tuning round
   fine-tuning (GPU only while training), S3 for data and model versions, ECS Fargate or a SageMaker endpoint for
   the API, CloudWatch for monitoring. This repo includes that setup in Terraform ([AWS option](aws.md)).
 
-## 7. Interview checklist
+## 7. Check your understanding
 
 You should be able to explain, in your own words:
 - the difference between pretraining and fine-tuning, and why fine-tuning needs little data
