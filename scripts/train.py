@@ -31,7 +31,7 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("--data", default="data/spend_lines.csv.gz")
     p.add_argument("--model", default="distilroberta-base")
-    p.add_argument("--epochs", type=int, default=4)
+    p.add_argument("--epochs", type=int, default=8)
     p.add_argument("--out", default="models/spendcoder")
     p.add_argument("--target-accuracy", type=float, default=0.95)
     p.add_argument("--baseline-only", action="store_true")
