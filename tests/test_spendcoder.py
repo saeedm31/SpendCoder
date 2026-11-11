@@ -224,6 +224,8 @@ class PredictorTests(unittest.TestCase):
         self.assertEqual(pred.probs([]).shape, (0, len(CATEGORIES)))
         texts = ["ONE", "TWO WORDS", "a b c d e f"] * 3
         np.testing.assert_allclose(pred.probs(texts, batch_size=2), pred.probs(texts, batch_size=100))   # batching
+        pred.batch_size = 1
+        np.testing.assert_allclose(pred.probs(texts), pred.probs(texts, batch_size=100))
 
 
 @unittest.skipUnless(importlib.util.find_spec("fastapi") and importlib.util.find_spec("httpx"), "fastapi not installed")
@@ -254,6 +256,7 @@ class ApiTests(unittest.TestCase):
         g = c.get("/how-it-works")
         self.assertEqual(g.status_code, 200)
         self.assertIn("transformer", g.text)
+        self.assertEqual(c.get("/product").status_code, 200)
         h = c.get("/health").json()
         self.assertEqual((h["status"], h["categories"], h["review_threshold"]), ("ready", len(CATEGORIES), 0.9))
         self.assertEqual(c.get("/health").json()["categories"], len(CATEGORIES))
