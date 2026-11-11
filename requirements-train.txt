@@ -1,0 +1,7 @@
+# Fine-tuning (Google Colab already has torch; on a laptop install the CPU build of torch first)
+-r requirements.txt
+torch>=2.2
+transformers>=4.46
+datasets>=2.19
+accelerate>=0.30
+onnxscript>=0.1      # used by newer torch versions to export ONNX
