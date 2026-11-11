@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SpendCoder for Finance Teams</title>
+<meta name="description" content="SpendCoder puts every purchase and invoice line in the right spend category. Confident lines are coded automatically; the rest go to your team with the top 3 suggestions.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%231f6b52'/><path d='M9 10h14M9 16h10M9 22h6' stroke='white' stroke-width='3' stroke-linecap='round'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap">
+<style>
+  /* Layout: product page. Hero with a live-looking review card, then value, steps, control, expectations, pilot. */
+  :root {
+    --bg: #f3f6f4; --surface: #ffffff; --ink: #14211c; --muted: #56665f; --line: #d8e1dc;
+    --accent: #1f6b52; --accent-ink: #ffffff; --accent-soft: #e2efe9; --data: #2457a6; --data-soft: #e6eefa;
+    --review: #9a5a00; --review-soft: #fbefd9; --auto: #1d7a4b; --auto-soft: #e0f3e8; --band: #14211c; --band-ink: #e6eeea;
+    --display: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+    --body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1513; --surface: #17201c; --ink: #e6eeea; --muted: #9aaba3; --line: #2a3732;
+      --accent: #5cc29a; --accent-ink: #0f1311; --accent-soft: #1b2c25; --data: #8db3ee; --data-soft: #1a2536;
+      --review: #f2b35b; --review-soft: #33281a; --auto: #6fd0a0; --auto-soft: #173026; --band: #1b2c25; --band-ink: #e6eeea;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1513; --surface: #17201c; --ink: #e6eeea; --muted: #9aaba3; --line: #2a3732;
+    --accent: #5cc29a; --accent-ink: #0f1311; --accent-soft: #1b2c25; --data: #8db3ee; --data-soft: #1a2536;
+    --review: #f2b35b; --review-soft: #33281a; --auto: #6fd0a0; --auto-soft: #173026; --band: #1b2c25; --band-ink: #e6eeea;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  img { max-width: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.6 var(--body); }
+  .wrap { max-width: 1040px; margin: 0 auto;
+          padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  h1, h2, h3 { font-family: var(--display); line-height: 1.15; text-wrap: balance; margin: 0; }
+  h1 { font-size: clamp(32px, 5.4vw, 52px); letter-spacing: -0.025em; }
+  h2 { font-size: clamp(24px, 3.2vw, 32px); letter-spacing: -0.015em; }
+  h3 { font-size: 17px; }
+  p { margin: 0; }
+  a { color: var(--accent); }
+  a:focus-visible, .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .eyebrow { font: 600 12px/1 var(--body); text-transform: uppercase; letter-spacing: .12em; color: var(--accent); }
+  .muted { color: var(--muted); }
+  section { padding-block: 56px; }
+  .sec-head { display: grid; gap: 10px; max-width: 640px; margin-bottom: 28px; }
+
+  nav.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 18px; flex-wrap: wrap; }
+  .brand { font: 700 18px/1 var(--display); color: var(--ink); text-decoration: none; display: flex; align-items: center; gap: 8px; }
+  .brand i { width: 22px; height: 22px; border-radius: 6px; background: var(--accent); display: inline-block; }
+  .toplinks { display: flex; gap: 18px; font-size: 14px; font-weight: 600; flex-wrap: wrap; }
+  .toplinks a { color: var(--muted); text-decoration: none; }
+  .toplinks a:hover { color: var(--accent); }
+
+  /* Hero */
+  .hero { display: grid; gap: 36px; padding-block: 28px 56px; grid-template-columns: minmax(0, 1fr); align-items: center; }
+  @media (min-width: 880px) { .hero { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); } }
+  .hero-text { display: grid; gap: 18px; }
+  .hero-text .lead { font-size: 19px; color: var(--muted); max-width: 52ch; }
+  .ctas { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
+  .btn { font: 600 15px/1 var(--body); padding: 13px 18px; border-radius: 10px; text-decoration: none; display: inline-block; }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); }
+  .btn.ghost { border: 1px solid var(--line); color: var(--ink); background: var(--surface); }
+  .note { font-size: 13px; color: var(--muted); }
+
+  /* Review queue mock */
+  .queue { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px; display: grid; gap: 10px;
+           box-shadow: 0 18px 40px -24px rgba(20, 33, 28, .35); }
+  .queue-head { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--muted); }
+  .queue-head b { color: var(--ink); font-family: var(--display); font-size: 15px; }
+  .qline { border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: grid; gap: 8px; }
+  .qtop { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+  .qtext { font: 500 12.5px/1.45 var(--mono); color: var(--muted); overflow-wrap: anywhere; }
+  .qcat { font-weight: 650; font-size: 14.5px; }
+  .badge { flex: none; font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+  .badge.auto { color: var(--auto); background: var(--auto-soft); }
+  .badge.review { color: var(--review); background: var(--review-soft); }
+  .conf { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+  .bar { flex: 1; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--accent); }
+  .alts { display: flex; flex-wrap: wrap; gap: 6px; }
+  .alt { font-size: 12px; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); }
+  .alt.pick { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+
+  /* Value */
+  .value { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 760px) { .value { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  .vcard { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: grid; gap: 8px; align-content: start; }
+  .vcard p { color: var(--muted); font-size: 15px; }
+  .vicon { width: 36px; height: 36px; border-radius: 10px; background: var(--accent-soft); display: grid; place-items: center; }
+  .vicon svg { width: 20px; height: 20px; stroke: var(--accent); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* Steps */
+  .steps { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); counter-reset: s; }
+  @media (min-width: 760px) { .steps { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  .step { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: grid; gap: 8px; align-content: start; }
+  .step .n { font: 700 14px/1 var(--display); color: var(--accent); background: var(--accent-soft); width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; }
+  .step p { color: var(--muted); font-size: 15px; }
+  .step .who { font-size: 12px; font-weight: 600; color: var(--data); text-transform: uppercase; letter-spacing: .08em; }
+
+  /* Control */
+  .control { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 760px) { .control { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .citem { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 12px; padding: 16px 0; border-top: 1px solid var(--line); }
+  .citem svg { width: 22px; height: 22px; stroke: var(--accent); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; margin-top: 2px; }
+  .citem p { color: var(--muted); font-size: 15px; }
+
+  /* Expectations band */
+  .band { background: var(--band); color: var(--band-ink); border-radius: 18px; padding: 32px 24px; display: grid; gap: 24px; }
+  .band .eyebrow { color: var(--band-ink); opacity: .75; }
+  .band h2 { color: var(--band-ink); }
+  .band p { color: var(--band-ink); opacity: .85; max-width: 62ch; }
+  .stats { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 700px) { .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  .stat { border-top: 1px solid rgba(230, 238, 234, .25); padding-top: 14px; display: grid; gap: 4px; }
+  .stat b { font: 700 34px/1 var(--display); font-variant-numeric: tabular-nums; }
+  .stat span { font-size: 14px; opacity: .85; }
+
+  /* Pilot */
+  .pilot { display: grid; gap: 0; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); overflow: hidden; }
+  .prow { display: grid; grid-template-columns: minmax(0, 120px) minmax(0, 1fr); gap: 16px; padding: 16px 20px; border-top: 1px solid var(--line); }
+  .prow:first-child { border-top: 0; }
+  .prow b { font-family: var(--display); color: var(--accent); }
+  .prow p { color: var(--muted); font-size: 15px; }
+  @media (max-width: 520px) { .prow { grid-template-columns: minmax(0, 1fr); gap: 4px; } }
+
+  .fit { display: flex; flex-wrap: wrap; gap: 8px; }
+  .fit span { font-size: 14px; padding: 6px 12px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); }
+
+  .final { text-align: left; display: grid; gap: 14px; justify-items: start; }
+  footer { padding-block: 28px 44px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; display: flex; flex-wrap: wrap; gap: 8px 18px; }
+  @media (prefers-reduced-motion: no-preference) { .btn { transition: transform .15s; } .btn:hover { transform: translateY(-1px); } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <nav class="top" aria-label="Main">
+    <a class="brand" href="product"><i aria-hidden="true"></i>SpendCoder</a>
+    <div class="toplinks"><a href="#how">How it works</a><a href="#control">Control</a><a href="#pilot">Pilot</a><a href="./">Live demo</a></div>
+  </nav>
+
+  <header class="hero">
+    <div class="hero-text">
+      <div class="eyebrow">For accounts payable and procurement teams</div>
+      <h1>Every purchase line in the right spend category</h1>
+      <p class="lead">SpendCoder reads each invoice or purchase line, suggests the spend category and codes it automatically
+        when it is confident. Everything else goes to your team, with the three most likely categories ready to pick.</p>
+      <div class="ctas">
+        <a class="btn primary" href="./">Try it with your own lines</a>
+        <a class="btn ghost" href="#how">See how it works</a>
+      </div>
+      <p class="note">The demo is free to try and needs no sign-up. It may take a minute to wake up.</p>
+    </div>
+
+    <div class="queue" role="img" aria-label="Example of the review queue: one line coded automatically, two lines waiting for a person with suggestions, real answers from the live demo">
+      <div class="queue-head"><b>Today's lines</b><span>3 lines · 1 automatic · 2 to review</span></div>
+      <div class="qline">
+        <div class="qtop"><div><div class="qtext">Design review of substation protection scheme</div>
+          <div class="qcat">Engineering &amp; professional services</div></div><span class="badge auto">Auto</span></div>
+        <div class="conf"><div class="bar"><i style="width:97.4%"></i></div><span>97.4% sure</span></div>
+      </div>
+      <div class="qline">
+        <div class="qtop"><div><div class="qtext">Annual maintenance contract for production line pumps</div>
+          <div class="qcat">Equipment maintenance &amp; repair?</div></div><span class="badge review">Review</span></div>
+        <div class="conf"><div class="bar"><i style="width:69.7%"></i></div><span>69.7% sure</span></div>
+        <div class="alts"><span class="alt pick">Equipment maintenance &amp; repair</span><span class="alt">Other goods</span><span class="alt">Other services</span></div>
+      </div>
+      <div class="qline">
+        <div class="qtop"><div><div class="qtext">Dell Latitude laptops and docking stations</div>
+          <div class="qcat">IT hardware &amp; software?</div></div><span class="badge review">Review</span></div>
+        <div class="conf"><div class="bar"><i style="width:65.4%"></i></div><span>65.4% sure</span></div>
+        <div class="alts"><span class="alt pick">IT hardware &amp; software</span><span class="alt">Other goods</span><span class="alt">Lab instruments &amp; chemicals</span></div>
+      </div>
+      <p class="note">Real answers from the live demo. A reviewer picks the right category in one click.</p>
+    </div>
+  </header>
+
+  <section aria-labelledby="why">
+    <div class="sec-head"><div class="eyebrow">Why teams use it</div><h2 id="why">Less manual coding, cleaner spend data</h2></div>
+    <div class="value">
+      <div class="vcard">
+        <div class="vicon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+        <h3>Faster month-end</h3>
+        <p>Routine lines are coded in about a second. Your team spends its time on the lines that really need a decision.</p>
+      </div>
+      <div class="vcard">
+        <div class="vicon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg></div>
+        <h3>Consistent categories</h3>
+        <p>The same kind of purchase lands in the same category, whoever is on duty. No more personal coding habits.</p>
+      </div>
+      <div class="vcard">
+        <div class="vicon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/></svg></div>
+        <h3>Spend you can analyse</h3>
+        <p>Clean categories make spend reports, supplier reviews and savings projects reliable from the start.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="how" aria-labelledby="how-h">
+    <div class="sec-head"><div class="eyebrow">How it works</div><h2 id="how-h">Four steps, built on your own history</h2>
+      <p class="muted">SpendCoder learns from lines your team has already coded, so it follows your categories, not a generic list.</p></div>
+    <div class="steps">
+      <div class="step"><span class="n">1</span><span class="who">You</span><h3>Share past coded lines</h3>
+        <p>An export from your ERP or AP system: the line description and the category it was booked to.</p></div>
+      <div class="step"><span class="n">2</span><span class="who">We</span><h3>Train it on your categories</h3>
+        <p>A language model that already understands business English learns your category list from those examples.</p></div>
+      <div class="step"><span class="n">3</span><span class="who">SpendCoder</span><h3>Code new lines</h3>
+        <p>Confident lines are coded automatically. Unsure lines go to a review queue with the top 3 suggestions.</p></div>
+      <div class="step"><span class="n">4</span><span class="who">Your team</span><h3>Correct and improve</h3>
+        <p>Every correction becomes a new example. Regular updates go live only when they test better than the current version.</p></div>
+    </div>
+  </section>
+
+  <section id="control" aria-labelledby="control-h">
+    <div class="sec-head"><div class="eyebrow">You stay in control</div><h2 id="control-h">Automation where it is safe, people where it matters</h2></div>
+    <div class="control">
+      <div class="citem"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16M14 6l6 6-6 6"/></svg>
+        <div><h3>You set the confidence bar</h3><p>Choose how sure SpendCoder must be before it codes on its own. A higher bar means fewer mistakes and more lines for review.</p></div></div>
+      <div class="citem"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h11"/></svg>
+        <div><h3>A person checks the unsure lines</h3><p>Low-confidence lines never post on their own. Reviewers see the top 3 suggestions and pick one in a click.</p></div></div>
+      <div class="citem"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+        <div><h3>Your data stays with you</h3><p>It runs on your own cloud account or servers. Lines are not sent to outside AI services.</p></div></div>
+      <div class="citem"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M10 13h6M10 17h6"/></svg>
+        <div><h3>Every decision is traceable</h3><p>Each suggestion, confidence score and human decision can be logged for audit, and each model version is kept.</p></div></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="expect-h">
+    <div class="band">
+      <div class="eyebrow">What to expect</div>
+      <h2 id="expect-h">Measured before anything goes live</h2>
+      <p>We test SpendCoder on your most recent lines, ones it has never seen, before it codes anything for real. These are the
+        numbers from the public demo, trained on about 17,000 US government purchase records and tested on the following year:</p>
+      <div class="stats">
+        <div class="stat"><b>14</b><span>spend categories</span></div>
+        <div class="stat"><b>2 in 3</b><span>lines right on the first suggestion, across all lines</span></div>
+        <div class="stat"><b>91%</b><span>right among lines coded automatically at the strictest setting (29% of lines)</span></div>
+      </div>
+      <p>Your results depend on your data: how many past lines you have and how consistently they were coded. That is why the
+        pilot starts with a measurement on your own history.</p>
+    </div>
+  </section>
+
+  <section id="pilot" aria-labelledby="pilot-h">
+    <div class="sec-head"><div class="eyebrow">Getting started</div><h2 id="pilot-h">Start with a small pilot</h2>
+      <p class="muted">A typical pilot on one company or cost centre. You decide after seeing the results on your own data.</p></div>
+    <div class="pilot">
+      <div class="prow"><b>Week 1</b><p>You share an export of past coded lines. We check the data and agree on the category list.</p></div>
+      <div class="prow"><b>Week 2</b><p>We train SpendCoder and show you the test results on your most recent lines.</p></div>
+      <div class="prow"><b>Weeks 3–4</b><p>It runs next to your team on new lines. You see what it would have coded and where it asks for help.</p></div>
+      <div class="prow"><b>Decision</b><p>Go live with the confidence bar you choose, or stop with no further commitment.</p></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="fit-h">
+    <div class="sec-head"><div class="eyebrow">Fits your setup</div><h2 id="fit-h">Works with what you already use</h2></div>
+    <div class="fit">
+      <span>Invoice lines</span><span>Purchase orders</span><span>Expense lines</span><span>CSV upload and download</span>
+      <span>Connects to your systems through an API</span><span>Runs on AWS or any server with Docker</span><span>English today, other languages possible</span>
+    </div>
+  </section>
+
+  <section class="final" aria-labelledby="final-h">
+    <h2 id="final-h">See it on real purchase lines</h2>
+    <p class="muted">Paste a few lines from your own invoices into the demo and see the category, the confidence and the suggestions.</p>
+    <div class="ctas"><a class="btn primary" href="./">Open the live demo</a><a class="btn ghost" href="how-it-works">Technical guide</a></div>
+  </section>
+
+  <footer>
+    <span>SpendCoder · built by Saeed Hojjatpanah</span>
+    <a href="./">Live demo</a>
+    <a href="how-it-works">How it works (technical guide)</a>
+    <a href="https://github.com/saeedm31/SpendCoder">Source code</a>
+  </footer>
+</div>
+</body>
+</html>
