@@ -1,4 +1,4 @@
-# SpendCoder API: ONNX model on CPU, no PyTorch (image about 300 MB)
+# SpendCoder API + web page: ONNX model on CPU, no PyTorch (image about 300 MB)
 FROM python:3.12-slim
 WORKDIR /app
 RUN pip install --no-cache-dir onnxruntime tokenizers huggingface_hub fastapi uvicorn numpy pandas requests boto3
@@ -8,8 +8,9 @@ COPY serve/ serve/
 #   MODEL_S3_BUCKET=<bucket>   the promoted model in S3 (AWS / ECS Fargate, see infra/terraform)
 #   MODEL_REPO=<user>/<repo>   the Hugging Face Hub:  docker run -e MODEL_REPO=... -p 8000:8000 spendcoder
 #   MODEL_DIR=models/onnx      a folder baked into or mounted in the container
-ENV MODEL_DIR=models/onnx
-RUN useradd --create-home app && chown -R app /app
+ENV MODEL_DIR=models/onnx PORT=8000 HF_HOME=/app/.cache/huggingface
+# user id 1000, as Hugging Face Spaces expect; never run as root
+RUN useradd --create-home --uid 1000 app && mkdir -p /app/.cache && chown -R app /app
 USER app
 EXPOSE 8000
-CMD ["uvicorn", "serve.app:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "uvicorn serve.app:app --host 0.0.0.0 --port ${PORT}"]

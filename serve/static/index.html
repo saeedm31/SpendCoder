@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SpendCoder</title>
+<meta name="description" content="A fine-tuned transformer that codes purchase and invoice lines into spend categories and sends unsure lines to a person.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%231f5f4a'/><path d='M9 10h14M9 16h10M9 22h6' stroke='white' stroke-width='3' stroke-linecap='round'/></svg>">
+<style>
+  :root {
+    --bg: #f6f5f1; --panel: #ffffff; --ink: #1d2320; --muted: #5f6a64; --line: #e3e1da;
+    --accent: #1f5f4a; --accent-ink: #ffffff; --accent-soft: #e4efe9;
+    --auto: #1f7a4d; --auto-soft: #e2f3e9; --review: #9a5b00; --review-soft: #fbefd9;
+    --bar: #1f5f4a; --bar-bg: #ebe9e2; --code-bg: #f0eee8; --focus: #2f7d63;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #121614; --panel: #1a1f1c; --ink: #e8ece9; --muted: #9aa59f; --line: #2b322e;
+      --accent: #5fb592; --accent-ink: #0f1311; --accent-soft: #1f2f28;
+      --auto: #6fd0a0; --auto-soft: #183026; --review: #f0b45a; --review-soft: #33281a;
+      --bar: #5fb592; --bar-bg: #2a312d; --code-bg: #151a17; --focus: #7fd0ad;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  a { color: var(--accent); }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 28px 16px 48px; }
+  header { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: flex-end; justify-content: space-between; margin-bottom: 22px; }
+  h1 { font-size: 28px; margin: 0; letter-spacing: -0.02em; }
+  .tagline { margin: 4px 0 0; color: var(--muted); max-width: 640px; }
+  .status { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted);
+            border: 1px solid var(--line); background: var(--panel); padding: 6px 12px; border-radius: 999px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--review); }
+  .dot.ok { background: var(--auto); }
+  .dot.err { background: #c0392b; }
+  .grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  @media (min-width: 900px) { .grid { grid-template-columns: 380px minmax(0, 1fr); align-items: start; } }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; }
+  .panel h2 { font-size: 15px; margin: 0 0 10px; }
+  label { font-weight: 600; font-size: 14px; }
+  textarea { width: 100%; min-height: 230px; resize: vertical; margin-top: 8px; padding: 10px 12px;
+             border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink);
+             font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  textarea:focus, button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .hint { color: var(--muted); font-size: 13px; margin: 6px 0 0; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  button { font: inherit; font-weight: 600; border-radius: 8px; padding: 9px 14px; cursor: pointer;
+           border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  button:disabled { opacity: .55; cursor: not-allowed; }
+  .slider { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+  .slider-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .slider output { font-weight: 700; font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; margin: 10px 0 4px; accent-color: var(--accent); }
+  .summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .stat { background: var(--bg); border-radius: 10px; padding: 10px 12px; }
+  .stat b { display: block; font-size: 22px; font-variant-numeric: tabular-nums; }
+  .stat span { color: var(--muted); font-size: 13px; }
+  .stat.auto b { color: var(--auto); }
+  .stat.review b { color: var(--review); }
+  .empty { color: var(--muted); padding: 28px 8px; text-align: center; }
+  .results { display: flex; flex-direction: column; gap: 10px; }
+  .item { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .item-top { display: flex; gap: 10px; justify-content: space-between; align-items: flex-start; }
+  .text { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; color: var(--muted);
+          overflow-wrap: anywhere; }
+  .cat { font-weight: 650; margin-top: 2px; }
+  .badge { flex: none; font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+  .badge.auto { color: var(--auto); background: var(--auto-soft); }
+  .badge.review { color: var(--review); background: var(--review-soft); }
+  .conf { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+  .bar { flex: 1; height: 6px; background: var(--bar-bg); border-radius: 3px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--bar); border-radius: 3px; }
+  .conf span { font-size: 13px; font-variant-numeric: tabular-nums; min-width: 44px; text-align: right; }
+  .alts { margin: 8px 0 0; padding: 0; list-style: none; font-size: 13px; color: var(--muted); }
+  .alts li { display: flex; justify-content: space-between; gap: 10px; }
+  .alts li span:last-child { font-variant-numeric: tabular-nums; }
+  .error { color: #c0392b; margin-top: 10px; font-size: 14px; }
+  .api { margin-top: 16px; }
+  pre { margin: 8px 0 0; background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px; padding: 12px;
+        overflow-x: auto; font: 12.5px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .about { margin-top: 16px; font-size: 14px; color: var(--muted); }
+  .about p { margin: 6px 0; }
+  footer { margin-top: 28px; color: var(--muted); font-size: 13px; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>SpendCoder</h1>
+      <p class="tagline">A fine-tuned transformer that codes purchase and invoice lines into 14 spend categories.
+        It codes a line automatically only when it is sure enough; the rest go to a person with its top 3 suggestions.</p>
+    </div>
+    <div class="status" role="status" aria-live="polite"><span class="dot" id="dot"></span><span id="status">Connecting…</span></div>
+  </header>
+
+  <div class="grid">
+    <section class="panel" aria-label="Input">
+      <label for="lines">Purchase lines, one per row</label>
+      <textarea id="lines" spellcheck="false" placeholder="Annual maintenance contract for production line pumps&#10;Dell Latitude laptops and docking stations"></textarea>
+      <p class="hint" id="limits">Up to 500 lines, 500 characters each.</p>
+      <div class="row">
+        <button class="primary" id="go" disabled>Classify</button>
+        <button id="examples">Load examples</button>
+        <button id="clear">Clear</button>
+      </div>
+      <div class="slider">
+        <div class="slider-head">
+          <label for="thr">Review threshold</label>
+          <output id="thrOut" for="thr">—</output>
+        </div>
+        <input type="range" id="thr" min="0.30" max="0.99" step="0.01" value="0.9">
+        <p class="hint">Code automatically only when the model is at least this sure. Higher means fewer mistakes and
+          more work for people. <span id="thrDefault"></span></p>
+      </div>
+      <div class="error" id="error" role="alert"></div>
+    </section>
+
+    <section class="panel" aria-label="Results">
+      <div class="summary">
+        <div class="stat"><b id="sLines">0</b><span>lines</span></div>
+        <div class="stat auto"><b id="sAuto">0</b><span>coded automatically</span></div>
+        <div class="stat review"><b id="sReview">0</b><span>to a person</span></div>
+      </div>
+      <div class="row" style="margin: -4px 0 12px"><button id="csv" disabled>Download CSV</button></div>
+      <div class="results" id="results"><div class="empty">Paste lines or load the examples, then press Classify.</div></div>
+    </section>
+  </div>
+
+  <section class="panel api" aria-label="API">
+    <h2>Use the API</h2>
+    <p class="hint" style="margin-top:0">The same model is a REST API (FastAPI, ONNX on CPU, in Docker). Interactive docs: <a href="docs">/docs</a>.</p>
+    <pre id="curl"></pre>
+  </section>
+
+  <section class="about" aria-label="About the model">
+    <p id="modelInfo"></p>
+    <p>Fine-tuned from <code>distilroberta-base</code> with the Hugging Face Trainer on about 20,000 public US Department
+      of Energy contract descriptions (USAspending.gov), tested on the newest year it never saw. A demo: check it on
+      your own labelled lines before real use, and keep a person in the loop.</p>
+  </section>
+
+  <footer>
+    <a href="https://github.com/saeedm31/SpendCoder">Code on GitHub</a> ·
+    <a id="cardLink" href="https://huggingface.co/Saeedhoj/spendcoder-distilroberta">Model card</a> ·
+    Built by Saeed Hojjatpanah
+  </footer>
+</div>
+
+<script>
+const EXAMPLES = [
+  "Annual maintenance contract for production line pumps",
+  "Dell Latitude laptops and docking stations",
+  "Asbestos removal and soil remediation at warehouse site",
+  "Consulting support for SAP S/4HANA finance migration",
+  "Office cleaning and security guard services",
+  "Microsoft 365 E3 licences for 250 users",
+  "Rental of 400 kVA diesel generator for site power",
+  "Fume hood replacement and laboratory chemicals",
+  "Forklift lease, 36 months",
+  "Repair of HVAC system at main office building",
+  "Design review of substation protection scheme",
+  "Electricity supply for headquarters, January"
+];
+const $ = (id) => document.getElementById(id);
+let results = [];
+let limits = { lines: 500, chars: 500 };
+
+function setStatus(kind, text) {
+  $("dot").className = "dot" + (kind === "ok" ? " ok" : kind === "err" ? " err" : "");
+  $("status").textContent = text;
+}
+const pct = (x) => (x * 100).toFixed(1) + "%";
+
+async function checkHealth() {
+  try {
+    const r = await fetch("health");
+    const h = await r.json();
+    if (h.status === "ready") {
+      setStatus("ok", "Model ready · " + h.categories + " categories");
+      $("go").disabled = false;
+      limits = h.limits || limits;
+      $("limits").textContent = `Up to ${limits.lines} lines, ${limits.chars} characters each.`;
+      const t = Number(h.review_threshold);
+      $("thr").value = t; $("thrOut").textContent = t.toFixed(2);
+      $("thrDefault").textContent = `Default ${t.toFixed(2)}: chosen on the validation year so automatic codings are about 95% right.`;
+      const m = h.metrics || {}, f = m.finetuned_test, b = m.baseline_test;
+      if (f) {
+        $("modelInfo").textContent = `Test year: accuracy ${pct(f.accuracy)}, macro F1 ${f.macro_f1.toFixed(3)}` +
+          (b ? ` (simple TF-IDF baseline: ${pct(b.accuracy)}, ${b.macro_f1.toFixed(3)}).` : ".");
+      }
+      if (h.model && h.model.url) $("cardLink").href = h.model.url;
+      return;
+    }
+    if (h.status === "error") { setStatus("err", "Model failed to load"); $("error").textContent = h.error || ""; return; }
+    setStatus("wait", "Loading the model…");
+  } catch (e) {
+    setStatus("wait", "Starting the service…");
+  }
+  setTimeout(checkHealth, 3000);
+}
+
+function render() {
+  const t = Number($("thr").value);
+  $("thrOut").textContent = t.toFixed(2);
+  const box = $("results");
+  box.replaceChildren();
+  if (!results.length) {
+    const d = document.createElement("div"); d.className = "empty";
+    d.textContent = "Paste lines or load the examples, then press Classify.";
+    box.append(d);
+  }
+  let auto = 0;
+  for (const r of results) {
+    const isAuto = r.confidence >= t; if (isAuto) auto++;
+    const item = document.createElement("article"); item.className = "item";
+    const top = document.createElement("div"); top.className = "item-top";
+    const left = document.createElement("div");
+    const text = document.createElement("div"); text.className = "text"; text.textContent = r.text;
+    const cat = document.createElement("div"); cat.className = "cat"; cat.textContent = r.category;
+    left.append(text, cat);
+    const badge = document.createElement("span"); badge.className = "badge " + (isAuto ? "auto" : "review");
+    badge.textContent = isAuto ? "Auto" : "Review";
+    top.append(left, badge);
+    const conf = document.createElement("div"); conf.className = "conf";
+    const bar = document.createElement("div"); bar.className = "bar";
+    const fill = document.createElement("i"); fill.style.width = (r.confidence * 100).toFixed(1) + "%"; bar.append(fill);
+    const val = document.createElement("span"); val.textContent = pct(r.confidence);
+    conf.append(bar, val);
+    conf.setAttribute("aria-label", "Confidence " + pct(r.confidence));
+    item.append(top, conf);
+    if (!isAuto) {
+      const ul = document.createElement("ul"); ul.className = "alts";
+      for (const s of r.suggestions) {
+        const li = document.createElement("li");
+        const a = document.createElement("span"); a.textContent = s.category;
+        const b = document.createElement("span"); b.textContent = pct(s.confidence);
+        li.append(a, b); ul.append(li);
+      }
+      item.append(ul);
+    }
+    box.append(item);
+  }
+  $("sLines").textContent = results.length;
+  $("sAuto").textContent = auto;
+  $("sReview").textContent = results.length - auto;
+  $("csv").disabled = !results.length;
+}
+
+async function classify() {
+  $("error").textContent = "";
+  const lines = $("lines").value.split("\n").map((s) => s.trim()).filter(Boolean);
+  if (!lines.length) { $("error").textContent = "Add at least one line."; return; }
+  if (lines.length > limits.lines) { $("error").textContent = `At most ${limits.lines} lines at a time.`; return; }
+  const long = lines.findIndex((l) => l.length > limits.chars);
+  if (long >= 0) { $("error").textContent = `Line ${long + 1} is longer than ${limits.chars} characters.`; return; }
+  $("go").disabled = true; $("go").textContent = "Classifying…";
+  try {
+    const r = await fetch("classify", { method: "POST", headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({ lines }) });
+    const body = await r.json();
+    if (!r.ok) throw new Error(typeof body.detail === "string" ? body.detail : "Request failed (" + r.status + ")");
+    results = body.results;
+    render();
+  } catch (e) {
+    $("error").textContent = e.message;
+  } finally {
+    $("go").disabled = false; $("go").textContent = "Classify";
+  }
+}
+
+function downloadCsv() {
+  const t = Number($("thr").value);
+  const q = (s) => '"' + String(s).replace(/"/g, '""') + '"';
+  const rows = [["text", "category", "confidence", "decision", "suggestion_2", "suggestion_3"]];
+  for (const r of results) {
+    rows.push([r.text, r.category, r.confidence, r.confidence >= t ? "auto" : "review",
+               (r.suggestions[1] || {}).category || "", (r.suggestions[2] || {}).category || ""]);
+  }
+  const blob = new Blob([rows.map((row) => row.map(q).join(",")).join("\n")], { type: "text/csv" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "spendcoder_results.csv";
+  a.click(); URL.revokeObjectURL(a.href);
+}
+
+$("curl").textContent =
+`curl -X POST ${location.origin}${location.pathname.replace(/\/$/, "")}/classify \\
+  -H "Content-Type: application/json" \\
+  -d '{"lines": ["Dell Latitude laptops", "Annual maintenance of HV switchgear"]}'`;
+$("go").addEventListener("click", classify);
+$("examples").addEventListener("click", () => { $("lines").value = EXAMPLES.join("\n"); });
+$("clear").addEventListener("click", () => { $("lines").value = ""; results = []; $("error").textContent = ""; render(); });
+$("thr").addEventListener("input", render);
+$("csv").addEventListener("click", downloadCsv);
+$("lines").addEventListener("keydown", (e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && !$("go").disabled) classify(); });
+checkHealth();
+</script>
+</body>
+</html>
