@@ -147,7 +147,7 @@ without traffic and takes about a minute to wake up.
 ## 📁 Project structure
 
 ```
-├── notebooks/SpendCoder_finetuning.ipynb   # the hands-on walkthrough (Colab)
+├── notebooks/SpendCoder_finetuning.ipynb   # the step-by-step walkthrough (Colab)
 ├── spendcoder/
 │   ├── taxonomy.py      # Product and Service Codes -> 14 spend categories
 │   ├── data.py          # download, clean, label, time split
