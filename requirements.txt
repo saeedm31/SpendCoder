@@ -1,0 +1,14 @@
+# Data, baseline and tests
+pandas>=2.0
+numpy>=1.26
+scikit-learn>=1.4
+requests>=2.31
+# Serving the fine-tuned model (ONNX on CPU, no PyTorch)
+onnxruntime>=1.18
+tokenizers>=0.19
+huggingface_hub>=0.24
+fastapi>=0.110
+uvicorn>=0.29
+httpx>=0.27          # FastAPI test client
+boto3>=1.34          # optional AWS path (SageMaker, S3, ECS)
+streamlit>=1.50      # demo app
