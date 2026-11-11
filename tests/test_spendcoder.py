@@ -238,6 +238,19 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(r.json()["summary"], {"lines": 2, "needs_review": 1})
         self.assertEqual(c.post("/classify", json={"lines": []}).status_code, 422)
         self.assertEqual(c.post("/classify", json={"lines": ["x" * 501]}).status_code, 400)
+
+    def test_page_and_health(self):
+        from fastapi.testclient import TestClient
+
+        from serve import app as service
+        service.predictor = lambda: Predictor(FakeTokenizer(), FakeSessionONNX(), CATEGORIES, threshold=0.9)
+        c = TestClient(service.app)
+        r = c.get("/")
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("text/html", r.headers["content-type"])
+        self.assertIn("SpendCoder", r.text)
+        h = c.get("/health").json()
+        self.assertEqual((h["status"], h["categories"], h["review_threshold"]), ("ready", len(CATEGORIES), 0.9))
         self.assertEqual(c.get("/health").json()["categories"], len(CATEGORIES))
 
 
