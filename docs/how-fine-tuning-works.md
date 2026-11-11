@@ -49,6 +49,8 @@ lines are enough to learn the mapping to categories.
    - **Evaluate every epoch, keep the best** (`load_best_model_at_end`, `metric_for_best_model`), plus **early
      stopping**: training stops when validation stops improving.
    - **fp16** on a GPU: half-precision numbers, about twice as fast.
+   - **Class imbalance:** if some categories have far fewer examples, weight the loss so mistakes on them cost
+     more (here: a `Trainer` subclass that overrides `compute_loss`). Otherwise macro F1 suffers.
 6. **Train.** Each step: forward pass, loss (cross-entropy: how wrong was it), backward pass (gradients), optimizer
    step (AdamW). Watch training loss go down and validation scores go up.
 7. **Evaluate on the test set once.** Accuracy, macro F1 (every category counts equally), per-category scores,
@@ -109,7 +111,8 @@ person's decision -> stored as a new label -> next fine-tuning round
 You should be able to explain, in your own words:
 - the difference between pretraining and fine-tuning, and why fine-tuning needs little data
 - what the tokenizer does, and why it must match the model
-- learning rate, epochs, batch size, warmup, early stopping, fp16
+- learning rate, epochs, batch size, warmup, early stopping, fp16, class-weighted loss
+- how to read the training log: if validation is still improving at the last epoch, train longer
 - why a baseline first, and why a time-based split
 - accuracy vs macro F1, and why macro F1 matters for small categories
 - how a confidence threshold turns a model into a safe business process
