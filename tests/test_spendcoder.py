@@ -222,6 +222,8 @@ class PredictorTests(unittest.TestCase):
         self.assertEqual([o["category"] for o in out[:2]], [CATEGORIES[1], CATEGORIES[2]])
         self.assertEqual([o["needs_review"] for o in out], [False, False, True])
         self.assertEqual(pred.probs([]).shape, (0, len(CATEGORIES)))
+        texts = ["ONE", "TWO WORDS", "a b c d e f"] * 3
+        np.testing.assert_allclose(pred.probs(texts, batch_size=2), pred.probs(texts, batch_size=100))   # batching
 
 
 @unittest.skipUnless(importlib.util.find_spec("fastapi") and importlib.util.find_spec("httpx"), "fastapi not installed")
