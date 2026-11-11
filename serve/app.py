@@ -8,6 +8,7 @@
     MODEL_S3_BUCKET=<bucket> uvicorn serve.app:app --port 8000
 
 GET  /          web page: paste lines, see category, confidence, review flag and top 3
+GET  /how-it-works  the data path and the model explained in plain English
 POST /classify  {"lines": ["ANNUAL MAINTENANCE OF HV SWITCHGEAR", "DELL LATITUDE LAPTOPS"]}
 GET  /health    model status, categories, review threshold, test scores
 GET  /docs      interactive API documentation (OpenAPI)
@@ -28,6 +29,7 @@ from spendcoder.predictor import Predictor
 MAX_LINES = 500
 MAX_CHARS = 500
 PAGE = Path(__file__).parent / "static" / "index.html"
+GUIDE = Path(__file__).parent / "static" / "how-it-works.html"
 _warmup = {"running": False, "error": None}
 
 
@@ -86,6 +88,11 @@ def _model_source():
 @app.get("/", include_in_schema=False)
 def page():
     return FileResponse(PAGE, media_type="text/html")
+
+
+@app.get("/how-it-works", include_in_schema=False)
+def guide():
+    return FileResponse(GUIDE, media_type="text/html")
 
 
 @app.get("/health")
