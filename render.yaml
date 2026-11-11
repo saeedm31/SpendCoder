@@ -1,0 +1,15 @@
+# Render Blueprint: the SpendCoder API + web page on Render's free plan (Dockerfile in this repo).
+# Render: New -> Blueprint -> pick this repo. The free plan sleeps after about 15 minutes without traffic.
+services:
+  - type: web
+    name: spendcoder
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: MODEL_REPO
+        value: Saeedhoj/spendcoder-distilroberta
+      - key: MODEL_SUBFOLDER
+        value: onnx-int8       # 4x smaller int8 model: fits the free plan's 512 MB of memory

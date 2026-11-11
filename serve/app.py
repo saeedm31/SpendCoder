@@ -3,6 +3,7 @@
     MODEL_DIR=models/onnx uvicorn serve.app:app --port 8000
     # or pull the model from the Hugging Face Hub at start-up:
     MODEL_REPO=<user>/spendcoder-distilroberta uvicorn serve.app:app --port 8000
+    # MODEL_SUBFOLDER=onnx-int8 picks the 4x smaller int8 model (for servers with little memory)
     # or on AWS (ECS Fargate), from the promoted model in S3:
     MODEL_S3_BUCKET=<bucket> uvicorn serve.app:app --port 8000
 
@@ -40,7 +41,8 @@ def predictor():
         return Predictor.load(path)
     if os.environ.get("MODEL_REPO"):
         return Predictor.from_hub(os.environ["MODEL_REPO"], revision=os.environ.get("MODEL_REVISION"),
-                                  token=os.environ.get("HF_TOKEN"))
+                                  token=os.environ.get("HF_TOKEN"),
+                                  subfolder=os.environ.get("MODEL_SUBFOLDER", "onnx"))
     return Predictor.load(os.environ.get("MODEL_DIR", "models/onnx"))
 
 
@@ -76,7 +78,7 @@ def _model_source():
     if os.environ.get("MODEL_S3_BUCKET"):
         return {"type": "s3", "name": os.environ["MODEL_S3_BUCKET"]}
     if os.environ.get("MODEL_REPO"):
-        return {"type": "hub", "name": os.environ["MODEL_REPO"],
+        return {"type": "hub", "name": os.environ["MODEL_REPO"], "variant": os.environ.get("MODEL_SUBFOLDER", "onnx"),
                 "url": f"https://huggingface.co/{os.environ['MODEL_REPO']}"}
     return {"type": "folder", "name": os.environ.get("MODEL_DIR", "models/onnx")}
 

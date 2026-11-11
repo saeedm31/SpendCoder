@@ -55,21 +55,29 @@ class Predictor:
         return obj
 
     @classmethod
-    def from_hub(cls, repo_id, revision=None, token=None, threshold=None):
-        """Download the ONNX folder from a Hugging Face Hub model repo (subfolder 'onnx') and load it."""
+    def from_hub(cls, repo_id, revision=None, token=None, threshold=None, subfolder="onnx"):
+        """Download an ONNX folder from a Hugging Face Hub model repo and load it.
+
+        subfolder "onnx" is the full-precision model; "onnx-int8" is the 4x smaller int8 version for small servers.
+        """
         from huggingface_hub import snapshot_download
 
-        path = snapshot_download(repo_id, revision=revision, token=token, allow_patterns=["onnx/*"])
-        return cls.load(os.path.join(path, "onnx"), threshold=threshold)
+        path = snapshot_download(repo_id, revision=revision, token=token, allow_patterns=[f"{subfolder}/*"])
+        return cls.load(os.path.join(path, subfolder), threshold=threshold)
 
-    def probs(self, texts):
+    def probs(self, texts, batch_size=32):
+        """Category probabilities. Lines go through the model in small batches, so memory stays low on a
+        small server even for a 500-line request."""
         if not texts:
             return np.zeros((0, len(self.labels)))
-        enc = self.tokenizer.encode_batch([clean_text(t) or " " for t in texts])
-        feeds = {"input_ids": np.array([e.ids for e in enc], dtype=np.int64),
-                 "attention_mask": np.array([e.attention_mask for e in enc], dtype=np.int64)}
-        logits = self.session.run(None, {n: feeds[n] for n in self.input_names if n in feeds})[0]
-        return softmax(np.asarray(logits, dtype=np.float64))
+        out = []
+        for i in range(0, len(texts), batch_size):
+            enc = self.tokenizer.encode_batch([clean_text(t) or " " for t in texts[i:i + batch_size]])
+            feeds = {"input_ids": np.array([e.ids for e in enc], dtype=np.int64),
+                     "attention_mask": np.array([e.attention_mask for e in enc], dtype=np.int64)}
+            logits = self.session.run(None, {n: feeds[n] for n in self.input_names if n in feeds})[0]
+            out.append(softmax(np.asarray(logits, dtype=np.float64)))
+        return np.concatenate(out)
 
     def classify(self, texts):
         return [decide(t, p, self.labels, self.threshold) for t, p in zip(texts, self.probs(texts))]
