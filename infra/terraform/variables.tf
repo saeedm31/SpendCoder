@@ -22,7 +22,7 @@ variable "image_tag" {
 }
 
 variable "desired_count" {
-  description = "Number of API tasks; 0 stops the service (and its cost)"
+  description = "Number of API tasks. Starts at 0: set 1 after the first model is promoted. 0 stops the cost."
   type        = number
-  default     = 1
+  default     = 0
 }
