@@ -59,7 +59,7 @@ def upload_dataset(s3, bucket, local_path, key=DATA_KEY):
 
 
 def launch_training(s3, sm, bucket, role_arn, repo_root, region, image_uri=None, data_key=DATA_KEY,
-                    instance_type="ml.g4dn.xlarge", epochs=4, spot=True, max_hours=2, job_name=None):
+                    instance_type="ml.g4dn.xlarge", epochs=8, spot=True, max_hours=2, job_name=None):
     """Start a SageMaker training job that runs scripts/train.py on a GPU. Returns the job name."""
     job_name = job_name or f"{PREFIX}-{datetime.now(timezone.utc):%Y%m%d-%H%M%S}"
     code_key = f"code/{job_name}/sourcedir.tar.gz"
