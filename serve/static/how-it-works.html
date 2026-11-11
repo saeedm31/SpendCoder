@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How SpendCoder Works</title>
+<meta name="description" content="How SpendCoder turns a purchase line into a spend category, in plain English: the data path, the transformer, the tests and the review step.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%231f6b52'/><path d='M9 10h14M9 16h10M9 22h6' stroke='white' stroke-width='3' stroke-linecap='round'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap">
+<style>
+  /* Layout: one vertical "data track" down the page; each stop shows what the data looks like at that point. */
+  :root {
+    --bg: #f3f6f4; --surface: #ffffff; --ink: #14211c; --muted: #56665f; --line: #d8e1dc;
+    --accent: #1f6b52; --accent-soft: #e2efe9; --data: #2457a6; --data-soft: #e6eefa;
+    --review: #9a5a00; --review-soft: #fbefd9; --auto: #1d7a4b; --auto-soft: #e0f3e8;
+    --display: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+    --body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1513; --surface: #17201c; --ink: #e6eeea; --muted: #9aaba3; --line: #2a3732;
+      --accent: #5cc29a; --accent-soft: #1b2c25; --data: #8db3ee; --data-soft: #1a2536;
+      --review: #f2b35b; --review-soft: #33281a; --auto: #6fd0a0; --auto-soft: #173026; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1513; --surface: #17201c; --ink: #e6eeea; --muted: #9aaba3; --line: #2a3732;
+    --accent: #5cc29a; --accent-soft: #1b2c25; --data: #8db3ee; --data-soft: #1a2536;
+    --review: #f2b35b; --review-soft: #33281a; --auto: #6fd0a0; --auto-soft: #173026; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  img { max-width: 100%; }
+  .back { justify-self: start; font-size: 14px; font-weight: 600; color: var(--accent); text-decoration: none; }
+  .back:hover { text-decoration: underline; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.6 var(--body); }
+  .wrap { max-width: 980px; margin: 0 auto; padding-block: 40px 56px;
+          padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  h1, h2, h3 { font-family: var(--display); line-height: 1.2; text-wrap: balance; margin: 0; }
+  h1 { font-size: clamp(30px, 5vw, 44px); letter-spacing: -0.02em; max-width: 18ch; }
+  h2 { font-size: 22px; letter-spacing: -0.01em; }
+  h3 { font-size: 16px; }
+  p { margin: 0; }
+  .eyebrow { font: 600 12px/1 var(--body); text-transform: uppercase; letter-spacing: .12em; color: var(--accent); }
+  .lead { color: var(--muted); font-size: 18px; max-width: 62ch; }
+  header { display: grid; gap: 14px; margin-bottom: 28px; }
+  .follow { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 6px; }
+  .follow span { color: var(--muted); font-size: 14px; }
+  .chip { font: 500 13px/1.4 var(--mono); color: var(--data); background: var(--data-soft); border-radius: 6px;
+          padding: 4px 9px; overflow-wrap: anywhere; }
+
+  /* Overview strip */
+  .overview { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 14px; margin-bottom: 36px;
+              background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+  .overview a { text-decoration: none; color: var(--ink); font-weight: 600; font-size: 14px; padding: 6px 10px;
+                border-radius: 8px; background: var(--bg); }
+  .overview a:hover, .overview a:focus-visible { background: var(--accent-soft); color: var(--accent); }
+  .overview .arr { color: var(--muted); }
+  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* The data track */
+  .track { position: relative; display: grid; gap: 22px; }
+  .stop { position: relative; display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 16px; }
+  .stop::before { content: ""; position: absolute; left: 21px; top: 44px; bottom: -22px; width: 2px; background: var(--line); }
+  .stop:last-child::before { display: none; }
+  .num { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; z-index: 1;
+         font: 700 17px/1 var(--display); color: var(--accent); background: var(--surface); border: 2px solid var(--accent); }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 20px;
+          display: grid; gap: 16px; min-width: 0; }
+  .card-grid { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 780px) { .card-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); align-items: start; } }
+  .text { display: grid; gap: 10px; min-width: 0; }
+  .text p { color: var(--muted); }
+  .snap { min-width: 0; background: var(--bg); border-radius: 10px; padding: 14px; display: grid; gap: 10px; }
+  .snap-label { font: 600 11px/1 var(--body); text-transform: uppercase; letter-spacing: .1em; color: var(--data); }
+  .pills { display: flex; flex-wrap: wrap; gap: 8px; }
+  .pill { font-size: 13px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent);
+          font-variant-numeric: tabular-nums; }
+
+  /* Tables inside snapshots */
+  .scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { text-align: left; padding: 7px 9px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-weight: 600; color: var(--muted); font-size: 12px; white-space: nowrap; }
+  td.mono { font-family: var(--mono); font-size: 12.5px; }
+  tr.keep td { background: var(--data-soft); }
+  .dim { color: var(--muted); }
+  .tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 999px; white-space: nowrap; }
+  .tag.in { background: var(--data-soft); color: var(--data); border: 1px solid var(--data); }
+  .tag.ans { background: var(--accent-soft); color: var(--accent); border: 1px solid var(--accent); }
+  .tag.when { background: var(--surface); color: var(--muted); border: 1px solid var(--line); }
+
+  /* Mapping row */
+  .map { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 14px; }
+  .map .arrow { color: var(--muted); }
+  .answer { font-weight: 600; color: var(--accent); }
+
+  /* Time split bar */
+  .split { display: flex; height: 38px; border-radius: 8px; overflow: hidden; font-size: 12px; font-weight: 600; }
+  .split div { display: grid; place-items: center; color: #fff; min-width: 0; white-space: nowrap; overflow: hidden; }
+  .s-train { background: var(--accent); flex: 17098; }
+  .s-val { background: var(--data); flex: 2065 0 0; min-width: 44px !important; }
+  .s-test { background: var(--review); flex: 1547 0 0; min-width: 44px !important; }
+  .split-legend { display: grid; gap: 6px; font-size: 13px; }
+  .split-legend div { display: flex; gap: 8px; align-items: baseline; }
+  .sw { width: 10px; height: 10px; border-radius: 2px; flex: none; transform: translateY(1px); }
+
+  /* Transformer explainer */
+  .tx { border: 2px solid var(--accent); }
+  .tx-head { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: baseline; }
+  .steps3 { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 780px) { .steps3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  .mini { background: var(--bg); border-radius: 10px; padding: 14px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+  .mini h3 { color: var(--ink); }
+  .mini p { color: var(--muted); font-size: 14.5px; }
+  .tokens { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tok { font: 500 12.5px/1 var(--mono); padding: 6px 8px; border-radius: 6px; background: var(--surface); border: 1px solid var(--line); }
+  .attn-wrap { overflow-x: auto; background: var(--bg); border-radius: 10px; padding: 10px 8px 6px; }
+  .attn { display: block; width: 100%; min-width: 520px; height: auto; }
+  .attn text { font-family: var(--mono); font-size: 15px; fill: var(--ink); }
+  .attn .focus { fill: var(--accent); font-weight: 600; }
+  .attn .arc { fill: none; stroke: var(--accent); stroke-linecap: round; }
+  .attn .note { font-family: var(--body); font-size: 12px; fill: var(--muted); }
+  .analogy { font-size: 15px; color: var(--ink); background: var(--accent-soft); border-radius: 10px; padding: 12px 14px; }
+
+  /* Output bars */
+  .bars { display: grid; gap: 8px; }
+  .bar-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; font-size: 13.5px; }
+  .bar { grid-column: 1 / -1; height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--accent); }
+  .bar.rest i { background: var(--muted); opacity: .5; }
+  .num-r { font-variant-numeric: tabular-nums; font-weight: 600; }
+
+  /* Decision */
+  .decide { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 640px) { .decide { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .lane { border-radius: 10px; padding: 14px; display: grid; gap: 6px; align-content: start; }
+  .lane.auto { background: var(--auto-soft); }
+  .lane.review { background: var(--review-soft); }
+  .lane b { font-family: var(--display); font-size: 15px; }
+  .lane.auto b { color: var(--auto); }
+  .lane.review b { color: var(--review); }
+  .lane p { font-size: 14px; color: var(--ink); }
+  .question { font-family: var(--display); font-weight: 600; font-size: 16px; text-align: center; padding: 10px;
+              border: 2px dashed var(--line); border-radius: 10px; }
+  .loop { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; color: var(--ink);
+          border-top: 1px dashed var(--line); padding-top: 12px; }
+  .loop .sym { font: 700 18px/1 var(--display); color: var(--accent); }
+
+  .results { display: grid; gap: 8px; }
+  .res { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; font-size: 14px; padding: 8px 10px;
+         background: var(--surface); border-radius: 8px; }
+  .res.best { outline: 2px solid var(--accent); }
+
+  footer { margin-top: 36px; display: grid; gap: 10px; color: var(--muted); font-size: 14px; }
+  footer a { color: var(--accent); }
+  @media (prefers-reduced-motion: no-preference) { .overview a { transition: background .15s, color .15s; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <a class="back" href="./">← Try the live demo</a>
+    <div class="eyebrow">SpendCoder · how it works</div>
+    <h1>From a purchase line to a spend category</h1>
+    <p class="lead">Accounting teams get thousands of purchase and invoice lines. Each one needs the right spend category.
+      SpendCoder learns to do this from past examples, and it asks a person whenever it is not sure.</p>
+    <div class="follow"><span>Follow one example line through every step:</span>
+      <span class="chip">Annual maintenance contract for production line pumps</span></div>
+  </header>
+
+  <nav class="overview" aria-label="Steps">
+    <a href="#s1">Records</a><span class="arr" aria-hidden="true">→</span>
+    <a href="#s2">Clean &amp; label</a><span class="arr" aria-hidden="true">→</span>
+    <a href="#s3">Split by time</a><span class="arr" aria-hidden="true">→</span>
+    <a href="#s4">Teach the model</a><span class="arr" aria-hidden="true">→</span>
+    <a href="#s5">Test</a><span class="arr" aria-hidden="true">→</span>
+    <a href="#s6">Package</a><span class="arr" aria-hidden="true">→</span>
+    <a href="#s7">Use every day</a>
+  </nav>
+
+  <main class="track">
+
+    <section class="stop" id="s1">
+      <div class="num">1</div>
+      <div class="card"><div class="card-grid">
+        <div class="text">
+          <h2>Collect past purchase records</h2>
+          <p>We start from real, public purchase records: contracts of the US Department of Energy, published on
+            USAspending.gov. In a company, this would be your own invoice or purchase-order history.</p>
+          <p>Each record is a row in a table. A buyer wrote a short description and chose an official product or service code.</p>
+          <div class="pills"><span class="pill">≈64,000 records downloaded</span><span class="pill">2018 to 2025</span></div>
+        </div>
+        <div class="snap">
+          <div class="snap-label">The data looks like this (example row)</div>
+          <div class="scroll"><table>
+            <tr><th>Description</th><th>Official code</th><th>Start date</th><th>Amount</th></tr>
+            <tr class="keep"><td class="mono">ANNUAL MAINTENANCE CONTRACT FOR PRODUCTION LINE PUMPS</td><td class="mono">J043</td><td class="mono">2024-11-04</td><td class="mono">$118,500</td></tr>
+          </table></div>
+          <p class="dim" style="font-size:13px">A table: one row per purchase, a few columns.</p>
+        </div>
+      </div></div>
+    </section>
+
+    <section class="stop" id="s2">
+      <div class="num">2</div>
+      <div class="card"><div class="card-grid">
+        <div class="text">
+          <h2>Clean it and add the right answer</h2>
+          <p>The model only reads the <b>description text</b>. The official code tells us the right answer: we group thousands
+            of codes into <b>14 spend categories</b>, like a company's chart of accounts.</p>
+          <p>We remove rows with no code and repeated descriptions, so every example teaches something new.</p>
+          <div class="pills"><span class="pill">≈20,700 labelled lines</span><span class="pill">14 categories</span></div>
+        </div>
+        <div class="snap">
+          <div class="snap-label">Each column gets a job</div>
+          <div class="scroll"><table>
+            <tr><th>Column</th><th>Role</th></tr>
+            <tr><td>Description</td><td><span class="tag in">What the model reads</span></td></tr>
+            <tr><td>Official code</td><td><span class="tag ans">The right answer</span></td></tr>
+            <tr><td>Start date</td><td><span class="tag when">Used to split by time</span></td></tr>
+            <tr><td>Amount</td><td class="dim">Not used</td></tr>
+          </table></div>
+          <div class="map"><span class="chip">J043</span><span class="arrow" aria-hidden="true">→</span><span>repair of pumps</span>
+            <span class="arrow" aria-hidden="true">→</span><span class="answer">Equipment maintenance &amp; repair</span></div>
+        </div>
+      </div></div>
+    </section>
+
+    <section class="stop" id="s3">
+      <div class="num">3</div>
+      <div class="card"><div class="card-grid">
+        <div class="text">
+          <h2>Split by time, like real life</h2>
+          <p>The model learns from the past and is tested on the future, exactly how it would be used. Lines whose exact text
+            already appeared in the past are removed from the test, so the test measures understanding, not memory.</p>
+        </div>
+        <div class="snap">
+          <div class="snap-label">20,710 lines, in time order</div>
+          <div class="split" role="img" aria-label="Learn from 17,098 older lines, check on 2,065, final test on 1,547 newest lines">
+            <div class="s-train">Learn</div><div class="s-val">Check</div><div class="s-test">Test</div>
+          </div>
+          <div class="split-legend">
+            <div><span class="sw" style="background:var(--accent)"></span><span><b>Learn</b> · 17,098 lines from before Oct 2023</span></div>
+            <div><span class="sw" style="background:var(--data)"></span><span><b>Check</b> · 2,065 lines, Oct 2023 to Sep 2024</span></div>
+            <div><span class="sw" style="background:var(--review)"></span><span><b>Final test</b> · 1,547 lines from Oct 2024, never seen.</span></div>
+          </div>
+        </div>
+      </div></div>
+    </section>
+
+    <section class="stop" id="s4">
+      <div class="num">4</div>
+      <div class="card tx">
+        <div class="tx-head"><h2>Teach the model: what a transformer does</h2><span class="eyebrow">the core idea</span></div>
+        <p class="analogy">Think of hiring an experienced accountant who already knows English very well, then giving them a
+          week of training on your own category list. The transformer is the experienced accountant; fine-tuning is the
+          week of training.</p>
+
+        <div class="steps3">
+          <div class="mini">
+            <h3>1 · It cuts text into pieces</h3>
+            <p>The sentence is split into small pieces (tokens), and each piece becomes numbers the model can work with.</p>
+            <div class="tokens" aria-label="Tokens"><span class="tok">annual</span><span class="tok">maintenance</span><span class="tok">contract</span><span class="tok">for</span><span class="tok">production</span><span class="tok">line</span><span class="tok">pumps</span></div>
+          </div>
+          <div class="mini">
+            <h3>2 · It reads words in context</h3>
+            <p>It looks at all words at once and asks which ones matter to each other. "Pumps" on its own could be a product
+              to buy; next to "maintenance" it means a repair service.</p>
+          </div>
+          <div class="mini">
+            <h3>3 · It scores every category</h3>
+            <p>At the end it gives each of the 14 categories a score. The scores add up to 100%: that is how sure it is.</p>
+          </div>
+        </div>
+
+        <div class="attn-wrap" role="img" aria-label="Attention: the word pumps links most strongly to maintenance, then production and line">
+          <svg class="attn" viewBox="0 0 600 150" xmlns="http://www.w3.org/2000/svg">
+            <path class="arc" d="M 545 108 Q 355 0 165 108" stroke-width="6"/>
+            <path class="arc" d="M 545 108 Q 502 52 460 108" stroke-width="3" opacity=".75"/>
+            <path class="arc" d="M 545 108 Q 452 34 360 108" stroke-width="2" opacity=".55"/>
+            <path class="arc" d="M 545 108 Q 297 -22 50 108" stroke-width="1" opacity=".35"/>
+            <text x="50" y="132" text-anchor="middle">annual</text>
+            <text x="165" y="132" text-anchor="middle">maintenance</text>
+            <text x="270" y="132" text-anchor="middle">for</text>
+            <text x="360" y="132" text-anchor="middle">production</text>
+            <text x="460" y="132" text-anchor="middle">line</text>
+            <text x="545" y="132" text-anchor="middle" class="focus">pumps</text>
+            <text x="300" y="18" text-anchor="middle" class="note">Thicker line = "pumps" pays more attention to that word</text>
+          </svg>
+        </div>
+
+        <div class="card-grid">
+          <div class="text">
+            <h3>Pre-trained, then fine-tuned</h3>
+            <p><b>Pre-trained:</b> the model (DistilRoBERTa, 82 million numbers inside) already read a huge amount of
+              English text. It knows how language works, but nothing about spend categories.</p>
+            <p><b>Fine-tuned:</b> we show it our 17,098 labelled lines a few times over. Each time it guesses, compares
+              with the right answer and adjusts itself a little. About 15 minutes on one graphics card.</p>
+            <p>We also train a much simpler <b>word-matching model</b> as a yardstick. The transformer has to beat it to earn its place.</p>
+          </div>
+          <div class="snap">
+            <div class="snap-label">What it learns from</div>
+            <div class="scroll"><table>
+              <tr><th>Text it reads</th><th>Right answer</th></tr>
+              <tr><td class="mono">DELL LATITUDE LAPTOPS</td><td>IT hardware &amp; software</td></tr>
+              <tr><td class="mono">JANITORIAL SERVICES BLDG 12</td><td>Utilities, security &amp; housekeeping</td></tr>
+              <tr><td class="mono">REPAIR OF HVAC CHILLER</td><td>Equipment maintenance &amp; repair</td></tr>
+              <tr><td class="dim" colspan="2">… 17,098 examples like these (illustrative rows)</td></tr>
+            </table></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="stop" id="s5">
+      <div class="num">5</div>
+      <div class="card"><div class="card-grid">
+        <div class="text">
+          <h2>Test it honestly on the newest year</h2>
+          <p>We ask both models about the 1,547 newest lines and count how often they pick the official category.</p>
+          <p>On this data the transformer and the simple model score about the same, and using both together scores best.
+            Short, keyword-heavy lines are easy for word matching too. Knowing this before going live is the point of testing.</p>
+        </div>
+        <div class="snap">
+          <div class="snap-label">Share of test lines put in the right category</div>
+          <div class="results">
+            <div class="res"><span>Simple word-matching model</span><span class="num-r">67.3%</span></div>
+            <div class="res"><span>Fine-tuned transformer</span><span class="num-r">66.5%</span></div>
+            <div class="res best"><span>Both together (average)</span><span class="num-r">68.1%</span></div>
+          </div>
+        </div>
+      </div></div>
+    </section>
+
+    <section class="stop" id="s6">
+      <div class="num">6</div>
+      <div class="card"><div class="card-grid">
+        <div class="text">
+          <h2>Package it to run anywhere</h2>
+          <p>The trained model is saved as one compact file and shrunk to a quarter of its size with no loss in quality.
+            It runs on an ordinary server, no graphics card needed, and is stored with a description of how it was tested.</p>
+        </div>
+        <div class="snap">
+          <div class="snap-label">The model file</div>
+          <div class="map"><span class="chip">329 MB</span><span class="arrow" aria-hidden="true">→</span><span class="chip">83 MB</span><span class="dim">same test score (66.6%)</span></div>
+          <div class="pills"><span class="pill">Runs on a normal CPU</span><span class="pill">Versioned on Hugging Face</span></div>
+        </div>
+      </div></div>
+    </section>
+
+    <section class="stop" id="s7">
+      <div class="num">7</div>
+      <div class="card">
+        <div class="card-grid">
+          <div class="text">
+            <h2>Use it every day, with a person in the loop</h2>
+            <p>A new line arrives through the web page or straight from the accounting system. In about a second the
+              model returns a category and how sure it is.</p>
+            <p>A <b>confidence bar</b> decides what happens next. We set it so that automatic codings are about 95% right
+              on the check year. A higher bar means fewer mistakes and more lines for people.</p>
+          </div>
+          <div class="snap">
+            <div class="snap-label">Our example line, real answer from the live demo</div>
+            <span class="chip">Annual maintenance contract for production line pumps</span>
+            <div class="bars">
+              <div class="bar-row"><span>Equipment maintenance &amp; repair</span><span class="num-r">67.6%</span>
+                <div class="bar"><i style="width:67.6%"></i></div></div>
+              <div class="bar-row"><span class="dim">The other 13 categories together</span><span class="num-r dim">32.4%</span>
+                <div class="bar rest"><i style="width:32.4%"></i></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="question">Is the model at least 99% sure?</div>
+        <div class="decide">
+          <div class="lane auto"><b>Yes · coded automatically</b>
+            <p>The line is posted with its category. With this bar, 29% of test lines went this way, and 91% of them were right.</p></div>
+          <div class="lane review"><b>No · a person decides</b>
+            <p>The line goes to a review queue with the model's top 3 suggestions. Our pump line lands here: 67.6% is below the bar.
+              Its top suggestion is the right category, so the check is quick.</p></div>
+        </div>
+        <div class="loop"><span class="sym" aria-hidden="true">↺</span>
+          <span><b>Back to step 2:</b> every decision a person makes becomes a new labelled example. The model is retrained
+            on them regularly, and a new version goes live only if it beats the current one on the same test.</span></div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer>
+    <p>Try it yourself: <a href="./">live demo</a> ·
+      <a href="https://github.com/saeedm31/SpendCoder">code and full results</a> ·
+      <a href="https://huggingface.co/Saeedhoj/spendcoder-distilroberta">model card</a></p>
+    <p>Built by Saeed Hojjatpanah. Demo on public data; check it on your own labelled lines before real use.</p>
+  </footer>
+</div>
+</body>
+</html>
